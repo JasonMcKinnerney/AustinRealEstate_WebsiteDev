@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <title>Austin Real Estate Helper</title>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ==" crossorigin="" />
+    <link rel="stylesheet" href="nouislider.css" />
+    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js" integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ==" crossorigin=""></script>
+
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+        
+        .leaflet-container {
+            height: 800px;
+            width: 1000px;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        #overlay {
+            position: absolute;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            right: 0;
+            margin: 10px;
+            border-radius: 10px;
+            box-shadow: 1px 1px 1px grey;
+            min-height: 200px;
+        }
+        
+        #overlay h2,
+        #slide-in h2 {
+            margin: 0;
+            padding: 0;
+            margin-bottom: 10px;
+        }
+        
+        #slider {
+            margin-top: 50px;
+        }
+    </style>
+
+
+
+</head>
+
+<body>
+
+    <div id="overlay">
+        <h2>Historical Sales</h2>
+        <h5>Search Filter</h5>
+        <input id="search" type="text" />
+        <button id="advanced">Search Address</button>
+        <br />
+        <div id="slider"></div>
+    </div>
+
+
+    <div id="map" style="width: 1000px; height: 800px;"></div>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://npmcdn.com/@turf/turf/turf.min.js"></script>
+    <script src="houses.js"></script>
+    <script src="nouislider.js"></script>
+    <script>
+        var map = L.map('map').setView([30.29, -97.78], 10);
+
+        var tiles = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiamFzb25tY2siLCJhIjoiY2wyNHR1NG54MjNwZzNqcDZldXRpMHRtbiJ9.ADjlBhjhx__k9-uGgSuONA', {
+            maxZoom: 18,
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+                'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            id: 'mapbox/streets-v11',
+            tileSize: 512,
+            zoomOffset: -1
+        }).addTo(map);
+        var min = 0;
+        var max = 0;
+        console.log(houses)
+        var geojson = L.geoJSON(houses, {
+            style: function(feature) {
+                return {
+                    fillOpacity: 1,
+                    fillcolor: '#000',
+                    color: '#000',
+                    opacity: 1
+                };
+            },
+            pointToLayer: function(geoJsonPoint, latlng) {
+                if (geoJsonPoint.properties.Price < min || min === 0) {
+                    min = geoJsonPoint.properties.Price;
+                }
+                if (geoJsonPoint.properties.Price > max) {
+                    max = geoJsonPoint.properties.Price;
+                }
+                var html = '';
+                var arrayofProps = ['Address', 'Price', 'numOfBedrooms', 'numOfBathrooms', 'numOfStories', 'livingAreaSqFt', 'YearBuilt', 'GarageSpaces', "NoKids_rating", "Family_Rating"];
+                arrayofProps.forEach(function(prop) {
+                    html += '<strong>' + prop + '<strong>: ' + geoJsonPoint.properties[prop] + '<br />';
+                })
+                return L.circle(latlng, .001).bindPopup(html);
+            },
+        }).addTo(map);
+
+
+        $(document).on('keyup', '#search', function(e) {
+            var userInput = e.target.value;
+            geojson.eachLayer(function(layer) {
+                if (layer.feature.properties.Address.indexOf(userInput > -1)) {
+                    layer.addTo(map);
+                } else {
+                    map.removeLayer(layer);
+                }
+                console.log(layer);
+            });
+        });
+
+
+        // 
+        var slider = document.getElementById('slider');
+        noUiSlider.create(slider, {
+            start: [6928, 17102237],
+            tooltips: true,
+            connect: true,
+            range: {
+                'min': 6928,
+                'max': 17102237
+            }
+        }).on('slide', function(e) {
+            console.log(e)
+            geojson.eachLayer(function(layer) {
+                if (layer.feature.properties.Price >= parseFloat(e[0]) && layer.feature.properties.Price <= parseFloat(e[1])) {
+                    layer.addTo(map);
+                } else {
+                    map.removeLayer(layer);
+                }
+            });
+        });
+    </script>
+
+
+
+</body>
+
+</html>
